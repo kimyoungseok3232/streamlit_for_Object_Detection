@@ -1,5 +1,10 @@
 ## git clone
-dataset 폴더가 있는 위치에서 아래 structure 처럼 되도록 clone
+개인으로 사용하는 경우 dataset 폴더가 있는 위치에서 아래 structure 처럼 되도록 clone
+
+팀으로 사용하는 경우 동일한 위치에서 git submodule add https://github.com/kimyoungseok3232/streamlit_for_Object_Detection.git
+
+다른 팀원이 서브모듈 사용하는 경우 git submodule init
+
 
 ## Structure
 
