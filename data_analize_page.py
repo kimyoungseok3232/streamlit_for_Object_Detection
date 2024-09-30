@@ -28,7 +28,7 @@ def load_json_data():
         test_data = json.loads(t.read())
     test = read_data_from_json_by_columns(test_data)
     train = read_data_from_json_by_columns(train_data)
-    return test, train
+    return test, train, test_data, train_data
 # 출력 - train, test 데이터프레임 딕셔너리
 
 # 데이터 페이지 단위로 데이터프레임 스플릿
@@ -116,18 +116,79 @@ def show_dataframe(img,anno,window,type):
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
 
 # 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
-option = st.sidebar.selectbox("데이터 선택",("원본 데이터", "결과 데이터"))
+option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터"))
 
-if option == "원본 데이터":
-    # 데이터 로드
-    testd, traind = load_json_data()
+# 데이터 로드
+testd, traind, testjson, trainjson = load_json_data()
+
+if option == "이미지 데이터":
     # 트레인 데이터 출력
     choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
     if choose_data == "train":
         st.header("트레인 데이터")
-        page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
+        choose_type = st.sidebar.selectbox("시각화 선택", ("이미지 출력", "데이터 시각화"))
+        if choose_type == "이미지 출력":
+            page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
+        elif choose_type == "데이터 시각화":
+            st.header("annotations 분석")
+            st.dataframe(traind['annotations'])
+            
+            st.subheader("이미지당 annotation의 수")
+            d = traind['annotations']['image_id'].value_counts().sort_index()
+            maxd, meand, mediand, stdd = d.max(), d.mean(), d.median(), d.std()
+            st.write("Annotation count max: ", maxd, "Annotation count mean: ", meand, "Annotation count median: ", mediand, "Annotation count std: ", stdd)
+            st.bar_chart(d, height=400)
+            st.subheader("n개의 annotation을 가진 이미지의 수")
+            col1, col2 = st.columns((1,7))
+            col1.write(d.value_counts().sort_index().rename('coc'))
+            col2.bar_chart(d.value_counts().sort_index().rename('coc'),height=400)
+
+            st.subheader("bbox area 분포")
+            dt = traind['annotations']['area']
+            d = dt.round(-3).value_counts().sort_index()
+            maxd, meand, mediand, mind = dt.max(), dt.mean(), dt.median(), dt.min()
+            st.write("area min: ", mind, "area max: ", maxd, "area mean: ", meand, "area median: ", mediand)
+            col1, col2 = st.columns((1,7))
+            col1.write(d)
+            col2.bar_chart(d, height=400)
+
+            st.subheader("cartegory 분포")
+            d = traind['annotations']['category_id'].value_counts().sort_index()
+            maxd, meand, mediand, mind = d.max(), d.mean(), d.median(), d.min()
+            st.write("cartegory count min: ", mind, "cartegory count max: ", maxd, "cartegory count mean: ", meand, "cartegory count median: ", mediand)
+            col1, col2 = st.columns((1,7))
+            col1.write(d)
+            col2.bar_chart(d, height=400)
+
     elif choose_data == "test":
         st.header("테스트 데이터")
         page = show_dataframe(testd['images'],testd['annotations'],st,'../dataset/')
+elif option == "원본 데이터":
+    choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
 
-    
+    if choose_data == "train":
+        st.subheader("train.json")
+        data = trainjson
+    elif choose_data == "test":
+        st.subheader("test.json")
+        data = testjson
+
+    choose_depth = st.sidebar.selectbox("출력할 key depth", ('key', 'all'))
+    if choose_depth == 'all':
+        st.write(data)
+    elif choose_depth == 'key':
+        st.write(pd.DataFrame(data.keys(), columns=[choose_data]))
+        keylen = len(data.keys())
+        window = st.columns(keylen)
+        for idx,key in enumerate(data):
+            if isinstance(data[key], dict):
+                window[idx].write(key+" : dict")
+                window[idx].write(pd.DataFrame(data[key].keys(), columns=[key]))
+            elif isinstance(data[key], list) and data[key]:
+                window[idx].write(key+" : list of dict")
+                window[idx].write(pd.DataFrame(data[key][0].keys(), columns=[key]))
+    # st.write(pd.DataFrame(traind.keys(),columns=[choose_data]))
+    # keylen = len(traind.keys())
+    # window = st.columns(keylen)
+    # for idx,key in enumerate(traind):
+    #     window[idx].write(traind[key].columns.rename(key))
