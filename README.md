@@ -19,11 +19,9 @@
 
 또는 서브모듈 폴더로 들어가서 ```git pull origin main```로 업데이트
 
-한 명이 서브모듈 업데이트 후 프로젝트를 push 하면 다른 팀원은 프로젝트 pull 한 뒤
+한 명이 서브모듈 업데이트 후 프로젝트에 push 하면 다른 팀원은 프로젝트 pull 한 뒤
 
 ```git submodule update``` 만으로 업데이트 가능
-
-그냥 submodule 폴더에 들어가서 git pull 해도 됨
 
 ## Structure
 
