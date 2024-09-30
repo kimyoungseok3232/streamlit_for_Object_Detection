@@ -15,9 +15,9 @@
 
 ```git submodule update``` 하면 각자 로컬로 가져올 수 있음
 
-서브모듈 업데이트 된 경우 ```git submodule update --remote```로 업데이트
+서브모듈 업데이트 된 경우 ```git submodule update --remote```
 
-또는 서브모듈 폴더로 들어가서 ```git pull origin main```
+또는 서브모듈 폴더로 들어가서 ```git pull origin main```로 업데이트
 
 한 명이 서브모듈 업데이트 후 프로젝트를 push 하면 다른 팀원은 프로젝트 pull 한 뒤
 
