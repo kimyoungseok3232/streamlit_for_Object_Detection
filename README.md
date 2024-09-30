@@ -3,7 +3,15 @@
 
 팀으로 사용하는 경우 동일한 위치에서 git submodule add https://github.com/kimyoungseok3232/streamlit_for_Object_Detection.git
 
-다른 팀원이 서브모듈 사용하는 경우 git submodule init
+다른 팀원이 서브모듈 사용하는 경우 
+
+git submodule init 후
+
+git submodule update 하면 로컬로 가져올 수 있음
+
+submodule 업데이트 된 경우 git submodule update --remote 로 업데이트
+
+로컬에서 수정한 경우 git submodule update --remote --merge로 충돌해결
 
 
 ## Structure
