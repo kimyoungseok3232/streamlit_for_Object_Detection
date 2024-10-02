@@ -64,4 +64,6 @@ streamlit run data_analize_page.py --server.runOnSave=true
 ```
 3. 브라우저에서 http://localhost:8501/ 로 접속하여 확인합니다.
 
+4. 데이터 유출 우려가 있어 간단한 로그인 기능 추가했습니다. auth 부분에 적당한 비밀번호 넣으셔서 사용하시는 것 권장드립니다.
+
 ![image](https://github.com/user-attachments/assets/48775dad-7bda-4020-acef-1c25aa072a86)
