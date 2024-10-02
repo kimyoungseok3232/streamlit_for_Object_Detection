@@ -105,9 +105,10 @@ def show_images(type, img_pathes, anno, window):
     for idx,(path,id) in enumerate(img_pathes.values):
         if idx%3 == 0:
             cols = window.columns(3)
-
-        img, tlist, tset = get_image(type+path, anno[anno['image_id']==id], 0)
-
+        if not anno.empty:
+            img, tlist, tset = get_image(type+path, anno[anno['image_id']==id], 0)
+        else:
+            img, tlist, tset = get_image(type+path, pd.DataFrame(), 0)
         cols[idx%3].image(img)
         cols[idx%3].write(path)
         if tlist: 
@@ -157,7 +158,7 @@ def show_dataframe(img,anno,window,type):
         con1.dataframe(data=pages[current_page - 1][['file_name','annotation_num']], use_container_width=True)
     else:
         con1.dataframe(data=pages[current_page - 1]['file_name'], use_container_width=True)
-    if [anno]:
+    if not anno.empty:
         show_images(type, pages[current_page - 1][['file_name','id']], anno[['image_id','bbox','category_id']], con2)
     else:
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
