@@ -201,14 +201,10 @@ def login(password, auth):
     else:
         st.write('need password')
 
-def logout():
-    st.session_state['login'] = False
-
 if 'login' not in st.session_state or st.session_state['login'] == False:
     auth = set(['T7137','T7122','T7148','T7134','T7104','T7119'])
     password = st.sidebar.text_input('password',type='password')
     button = st.sidebar.button('login',on_click=login(password, auth))
 
 elif st.session_state['login'] == True:
-    button = st.sidebar.button('logout',on_click=logout())
     main()
