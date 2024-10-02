@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import cv2
 import numpy as np
+import streamlit_authenticator as stauth
 st.set_page_config(page_title="데이터 분석 및 개별 이미지 확인용", layout="wide")
 
 global categories 
@@ -115,80 +116,99 @@ def show_dataframe(img,anno,window,type):
     else:
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
 
-# 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
-option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터"))
+def main():
+    # 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
+    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터"))
 
-# 데이터 로드
-testd, traind, testjson, trainjson = load_json_data()
+    # 데이터 로드
+    testd, traind, testjson, trainjson = load_json_data()
 
-if option == "이미지 데이터":
-    # 트레인 데이터 출력
-    choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
-    if choose_data == "train":
-        st.header("트레인 데이터")
-        choose_type = st.sidebar.selectbox("시각화 선택", ("이미지 출력", "데이터 시각화"))
-        if choose_type == "이미지 출력":
-            page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
-        elif choose_type == "데이터 시각화":
-            st.header("annotations 분석")
-            st.dataframe(traind['annotations'])
-            
-            st.subheader("이미지당 annotation의 수")
-            d = traind['annotations']['image_id'].value_counts().sort_index()
-            maxd, meand, mediand, stdd = d.max(), d.mean(), d.median(), d.std()
-            st.write("Annotation count max: ", maxd, "Annotation count mean: ", meand, "Annotation count median: ", mediand, "Annotation count std: ", stdd)
-            st.bar_chart(d, height=400)
-            st.subheader("n개의 annotation을 가진 이미지의 수")
-            col1, col2 = st.columns((1,7))
-            col1.write(d.value_counts().sort_index().rename('coc'))
-            col2.bar_chart(d.value_counts().sort_index().rename('coc'),height=400)
+    if option == "이미지 데이터":
+        # 트레인 데이터 출력
+        choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
+        if choose_data == "train":
+            st.header("트레인 데이터")
+            choose_type = st.sidebar.selectbox("시각화 선택", ("이미지 출력", "데이터 시각화"))
+            if choose_type == "이미지 출력":
+                page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
+            elif choose_type == "데이터 시각화":
+                st.header("annotations 분석")
+                st.dataframe(traind['annotations'])
+                
+                st.subheader("이미지당 annotation의 수")
+                d = traind['annotations']['image_id'].value_counts().sort_index()
+                maxd, meand, mediand, stdd = d.max(), d.mean(), d.median(), d.std()
+                st.write("Annotation count max: ", maxd, "Annotation count mean: ", meand, "Annotation count median: ", mediand, "Annotation count std: ", stdd)
+                st.bar_chart(d, height=400)
+                st.subheader("n개의 annotation을 가진 이미지의 수")
+                col1, col2 = st.columns((1,7))
+                col1.write(d.value_counts().sort_index().rename('coc'))
+                col2.bar_chart(d.value_counts().sort_index().rename('coc'),height=400)
 
-            st.subheader("bbox area 분포")
-            dt = traind['annotations']['area']
-            d = dt.round(-3).value_counts().sort_index()
-            maxd, meand, mediand, mind = dt.max(), dt.mean(), dt.median(), dt.min()
-            st.write("area min: ", mind, "area max: ", maxd, "area mean: ", meand, "area median: ", mediand)
-            col1, col2 = st.columns((1,7))
-            col1.write(d)
-            col2.bar_chart(d, height=400)
+                st.subheader("bbox area 분포")
+                dt = traind['annotations']['area']
+                d = dt.round(-3).value_counts().sort_index()
+                maxd, meand, mediand, mind = dt.max(), dt.mean(), dt.median(), dt.min()
+                st.write("area min: ", mind, "area max: ", maxd, "area mean: ", meand, "area median: ", mediand)
+                col1, col2 = st.columns((1,7))
+                col1.write(d)
+                col2.bar_chart(d, height=400)
 
-            st.subheader("cartegory 분포")
-            d = traind['annotations']['category_id'].value_counts().sort_index()
-            maxd, meand, mediand, mind = d.max(), d.mean(), d.median(), d.min()
-            st.write("cartegory count min: ", mind, "cartegory count max: ", maxd, "cartegory count mean: ", meand, "cartegory count median: ", mediand)
-            col1, col2 = st.columns((1,7))
-            col1.write(d)
-            col2.bar_chart(d, height=400)
+                st.subheader("cartegory 분포")
+                d = traind['annotations']['category_id'].value_counts(normalize=True).sort_index()
+                maxd, meand, mediand, mind = d.max(), d.mean(), d.median(), d.min()
+                st.write("cartegory count min: ", mind, "cartegory count max: ", maxd, "cartegory count mean: ", meand, "cartegory count median: ", mediand)
+                col1, col2 = st.columns((1,7))
+                col1.write(d)
+                col2.bar_chart(d, height=400)
 
-    elif choose_data == "test":
-        st.header("테스트 데이터")
-        page = show_dataframe(testd['images'],testd['annotations'],st,'../dataset/')
-elif option == "원본 데이터":
-    choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
+        elif choose_data == "test":
+            st.header("테스트 데이터")
+            page = show_dataframe(testd['images'],testd['annotations'],st,'../dataset/')
+    elif option == "원본 데이터":
+        choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
 
-    if choose_data == "train":
-        st.subheader("train.json")
-        data = trainjson
-    elif choose_data == "test":
-        st.subheader("test.json")
-        data = testjson
+        if choose_data == "train":
+            st.subheader("train.json")
+            data = trainjson
+        elif choose_data == "test":
+            st.subheader("test.json")
+            data = testjson
 
-    choose_depth = st.sidebar.selectbox("출력할 key depth", ('key', 'all'))
-    if choose_depth == 'all':
-        st.write(data)
-    elif choose_depth == 'key':
-        st.write(pd.DataFrame(data.keys(), columns=[choose_data]))
-        keylen = len(data.keys())
-        window = st.columns(keylen)
-        for idx,key in enumerate(data):
-            if isinstance(data[key], dict):
-                window[idx].write(key+" : dict")
-                window[idx].write(pd.DataFrame(data[key].keys(), columns=[key]))
-            elif isinstance(data[key], list) and data[key]:
-                window[idx].write(key+" : list of dict")
-                window[idx].write(pd.DataFrame(data[key][0].keys(), columns=[key]))
-    # st.write(pd.DataFrame(traind.keys(),columns=[choose_data]))
-    # keylen = len(traind.keys())
-    # window = st.columns(keylen)
-    # for idx,key in enumerate(traind):
-    #     window[idx].write(traind[key].columns.rename(key))
+        choose_depth = st.sidebar.selectbox("출력할 key depth", ('key', 'all'))
+        if choose_depth == 'all':
+            st.write(data)
+        elif choose_depth == 'key':
+            st.write(pd.DataFrame(data.keys(), columns=[choose_data]))
+            keylen = len(data.keys())
+            window = st.columns(keylen)
+            for idx,key in enumerate(data):
+                if isinstance(data[key], dict):
+                    window[idx].write(key+" : dict")
+                    window[idx].write(pd.DataFrame(data[key].keys(), columns=[key]))
+                elif isinstance(data[key], list) and data[key]:
+                    window[idx].write(key+" : list of dict")
+                    window[idx].write(pd.DataFrame(data[key][0].keys(), columns=[key]))
+        # st.write(pd.DataFrame(traind.keys(),columns=[choose_data]))
+        # keylen = len(traind.keys())
+        # window = st.columns(keylen)
+        # for idx,key in enumerate(traind):
+        #     window[idx].write(traind[key].columns.rename(key))
+
+def login(password, auth):
+    if password in auth:
+        st.session_state['login'] = True
+    else:
+        st.write('need password')
+
+def logout():
+    st.session_state['login'] = False
+
+if 'login' not in st.session_state or st.session_state['login'] == False:
+    auth = set(['T7137','T7122','T7148','T7134','T7104','T7119'])
+    password = st.sidebar.text_input('password',type='password')
+    button = st.sidebar.button('login',on_click=login(password, auth))
+
+elif st.session_state['login'] == True:
+    button = st.sidebar.button('logout',on_click=logout())
+    main()
