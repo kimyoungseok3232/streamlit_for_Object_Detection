@@ -67,13 +67,33 @@ def show_image(type,path):
 ## img_pathes = train_data['image_id'] or test_data['image_id'] 데이터프레임
 ## anno = train_data[['bbox','category_id']] 데이터프레임
 ## window = 데이터 출력할 창
-def get_image(image_path, anno):
+def apply_transforms(img, anno, transform):
+
+    return img, anno
+def get_image(image_path, anno, transform):
     img = cv2.imread(image_path)
     tlist = [0 for _ in range(10)]
     tset = set()
+
+    if transform:
+        transformed = transform(image=img, bboxes=anno['bbox'].tolist(), labels=anno['category_id'].tolist())
+        img = transformed['image']
+        anno = pd.DataFrame({'bbox': transformed['bboxes'], 'category_id': transformed['labels']})
+
     if not anno.empty:
         for annotation,trash in anno[['bbox','category_id']].values:
-            cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 8)
+            cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 3)
+            ((text_width, text_height), _) = cv2.getTextSize(categories[trash], cv2.FONT_HERSHEY_SIMPLEX, 1, 10)
+            cv2.rectangle(img, (int(annotation[0]), int(annotation[1]) - int(1.3 * text_height)), (int(annotation[0] + text_width), int(annotation[1])), colors1[trash], -1)
+            cv2.putText(
+                img,
+                text=categories[trash],
+                org=(int(annotation[0]), int(annotation[1]) - int(0.3 * text_height)),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=1, 
+                color=(0,0,0), 
+                lineType=cv2.LINE_AA,
+            )
             tlist[trash] += 1
     for id, t in enumerate(tlist):
         if t:
@@ -86,7 +106,7 @@ def show_images(type, img_pathes, anno, window):
         if idx%3 == 0:
             cols = window.columns(3)
 
-        img, tlist, tset = get_image(type+path, anno[anno['image_id']==id])
+        img, tlist, tset = get_image(type+path, anno[anno['image_id']==id], 0)
 
         cols[idx%3].image(img)
         cols[idx%3].write(path)
@@ -105,7 +125,7 @@ def show_dataframe(img,anno,window,type):
         sort = st.radio("Sort Data", options=["Yes", "No"], horizontal=1, index=1, key=[type,window,1])
     if sort == "Yes":
         with top_menu[1]:
-            sort_field = st.selectbox("Sort By", options='annotation_num', key=[type,window,2])
+            sort_field = st.selectbox("Sort By", options=img.columns, key=[type,window,2])
         with top_menu[2]:
             sort_direction = st.radio(
                 "Direction", options=["⬆️", "⬇️"], horizontal=True
@@ -144,7 +164,7 @@ def show_dataframe(img,anno,window,type):
 
 def main():
     # 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
-    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터"))
+    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터", "트랜스폼 테스트"))
 
     # 데이터 로드
     testd, traind, testjson, trainjson = load_json_data()
@@ -225,6 +245,29 @@ def main():
         # window = st.columns(keylen)
         # for idx,key in enumerate(traind):
         #     window[idx].write(traind[key].columns.rename(key))
+    elif option == "트랜스폼 테스트":
+        st.header("트랜스폼 테스트")
+        transform_list = []
+        image_data = {"1 annotation": ['../dataset/train/0000.jpg',0],
+                      "big annotation": ['../dataset/train/4857.jpg',4857],
+                      "8 annotation": ['../dataset/train/0008.jpg',8],
+                      "34 annotation": ['../dataset/train/3049.jpg',3049],
+                      "71 annotation": ['../dataset/train/4197.jpg',4197]}
+        choose_data = st.sidebar.selectbox("choose_image",("1 annotation", "big annotation", "8 annotation", "34 annotation", "71 annotation"))
+
+        if st.sidebar.checkbox("HorizontalFlip",value=True): transform_list.append(A.HorizontalFlip(p=1))
+        if st.sidebar.checkbox("VerticalFlip"): transform_list.append(A.VerticalFlip(p=1))
+
+        angle = st.sidebar.slider("Choose Rotation Angle", min_value=-180, max_value=180, value=0, step=1)
+        transform_list.append(A.Rotate(limit=(angle, angle), p=1))
+
+        shift_x = st.sidebar.slider("Choose Horizontal Shift", min_value=-30, max_value=30, value=0, step=1)
+        shift_y = st.sidebar.slider("Choose Vertical Shift", min_value=-30, max_value=30, value=0, step=1)
+        transform_list.append(A.Affine(translate_percent={"x": shift_x/100, "y": shift_y/100}, scale=1, rotate=0, mode=3, p=1.0))
+
+        transform = A.Compose(transform_list, bbox_params=A.BboxParams(format='coco', label_fields=['labels']))
+        img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
+        st.image(img, width=550)
 
 def login(password, auth):
     if password in auth:
