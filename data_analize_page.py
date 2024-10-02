@@ -4,6 +4,7 @@ import json
 import cv2
 import numpy as np
 import streamlit_authenticator as stauth
+import albumentations as A
 st.set_page_config(page_title="데이터 분석 및 개별 이미지 확인용", layout="wide")
 
 global categories, colors1, colors2
@@ -66,26 +67,31 @@ def show_image(type,path):
 ## img_pathes = train_data['image_id'] or test_data['image_id'] 데이터프레임
 ## anno = train_data[['bbox','category_id']] 데이터프레임
 ## window = 데이터 출력할 창
+def get_image(image_path, anno):
+    img = cv2.imread(image_path)
+    tlist = [0 for _ in range(10)]
+    tset = set()
+    if not anno.empty:
+        for annotation,trash in anno[['bbox','category_id']].values:
+            cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 8)
+            tlist[trash] += 1
+    for id, t in enumerate(tlist):
+        if t:
+            tset.add((categories[id],t))
+    return img, tlist, tset
+
 def show_images(type, img_pathes, anno, window):
     cols = window.columns(3)
     for idx,(path,id) in enumerate(img_pathes.values):
         if idx%3 == 0:
             cols = window.columns(3)
-        img = cv2.imread(type+path)
-        tlist = [0 for _ in range(10)]
-        tset = set()
-        if not anno.empty:
-            for annotation,trash in anno[anno['image_id']==id][['bbox','category_id']].values:
-                cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 8)
-                tlist[trash] += 1
-        for id, t in enumerate(tlist):
-            if t:
-                tset.add((categories[id],t))
+
+        img, tlist, tset = get_image(type+path, anno[anno['image_id']==id])
+
         cols[idx%3].image(img)
         cols[idx%3].write(path)
         if tlist: 
             cols[idx%3].write(tset)
-
 # 데이터 프레임 페이지 단위로 출력
 # 입력
 ## img = train_data or test_data에서 'images'
