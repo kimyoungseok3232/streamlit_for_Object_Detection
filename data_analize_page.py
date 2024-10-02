@@ -6,8 +6,22 @@ import numpy as np
 import streamlit_authenticator as stauth
 st.set_page_config(page_title="데이터 분석 및 개별 이미지 확인용", layout="wide")
 
-global categories 
+global categories, colors1, colors2
 categories = ['General trash', 'Paper', 'Paper pack', 'Metal', 'Glass', 'Plastic', 'Styrofoam', 'Plastic bag', 'Battery', 'Clothing']
+colors1 = [
+    (255, 0, 0),    # Red
+    (0, 255, 0),    # Green
+    (0, 0, 255),    # Blue
+    (255, 255, 0),  # Yellow
+    (255, 165, 0),  # Orange
+    (128, 0, 128),  # Purple
+    (0, 255, 255),  # Cyan
+    (255, 0, 255),  # Magenta
+    (165, 42, 42),  # Brown
+    (255, 192, 203) # Pink
+]
+colors2 = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'cyan', 'magenta', 'brown', 'pink']
+
 
 # json 파일에서 각 key 별로 데이터 불러와서 dataframe으로 변환 후 리스트에 넣고 리스트 반환
 # 입력 - json 파일
@@ -29,6 +43,7 @@ def load_json_data():
         test_data = json.loads(t.read())
     test = read_data_from_json_by_columns(test_data)
     train = read_data_from_json_by_columns(train_data)
+    train['images']['annotation_num'] = train['annotations']['image_id'].value_counts()
     return test, train, test_data, train_data
 # 출력 - train, test 데이터프레임 딕셔너리
 
@@ -36,12 +51,9 @@ def load_json_data():
 # 입력 - input_df(이미지 데이터), anno_df(박스 그리기 용), rows(한번에 보여줄 데이터 수)
 # 출력 - df(이미지 데이터프레임 리스트), df2(박스 그리기 용 데이터프레임 리스트)
 @st.cache_data(show_spinner=False)
-def split_frame(input_df, anno_df, rows):
+def split_frame(input_df, rows):
     df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
-    if not anno_df.empty:
-        df2 = [anno_df[(i<=anno_df['image_id'])&(anno_df['image_id']<=i+rows)] for i in range(0, len(input_df), rows)]
-        return df, df2
-    return df, []
+    return df
 
 # 팝업창 띄우기
 @st.dialog("image")
@@ -60,14 +72,19 @@ def show_images(type, img_pathes, anno, window):
         if idx%3 == 0:
             cols = window.columns(3)
         img = cv2.imread(type+path)
-        tlist = set()
+        tlist = [0 for _ in range(10)]
+        tset = set()
         if not anno.empty:
             for annotation,trash in anno[anno['image_id']==id][['bbox','category_id']].values:
-                cv2.rectangle(img, np.rint(annotation).astype(np.int32), (255,0,0), 2)
-                tlist.add(categories[trash])
+                cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 8)
+                tlist[trash] += 1
+        for id, t in enumerate(tlist):
+            if t:
+                tset.add((categories[id],t))
         cols[idx%3].image(img)
         cols[idx%3].write(path)
-        if tlist: cols[idx%3].write(tlist)
+        if tlist: 
+            cols[idx%3].write(tset)
 
 # 데이터 프레임 페이지 단위로 출력
 # 입력
@@ -82,7 +99,7 @@ def show_dataframe(img,anno,window,type):
         sort = st.radio("Sort Data", options=["Yes", "No"], horizontal=1, index=1, key=[type,window,1])
     if sort == "Yes":
         with top_menu[1]:
-            sort_field = st.selectbox("Sort By", options=img.columns, key=[type,window,2])
+            sort_field = st.selectbox("Sort By", options='annotation_num', key=[type,window,2])
         with top_menu[2]:
             sort_direction = st.radio(
                 "Direction", options=["⬆️", "⬇️"], horizontal=True
@@ -109,10 +126,13 @@ def show_dataframe(img,anno,window,type):
         )
     with bottom_menu[0]:
         st.markdown(f"Page **{current_page}** of **{total_pages}** ")
-    pages, anno_data = split_frame(img, anno, batch_size)
-    con1.dataframe(data=pages[current_page - 1]['file_name'], use_container_width=True)
-    if anno_data:
-        show_images(type, pages[current_page - 1][['file_name','id']], anno_data[current_page-1][['image_id','bbox','category_id']], con2)
+    pages = split_frame(img, batch_size)
+    if 'annotation_num' in pages[0].columns:
+        con1.dataframe(data=pages[current_page - 1][['file_name','annotation_num']], use_container_width=True)
+    else:
+        con1.dataframe(data=pages[current_page - 1]['file_name'], use_container_width=True)
+    if [anno]:
+        show_images(type, pages[current_page - 1][['file_name','id']], anno[['image_id','bbox','category_id']], con2)
     else:
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
 
@@ -130,6 +150,11 @@ def main():
             st.header("트레인 데이터")
             choose_type = st.sidebar.selectbox("시각화 선택", ("이미지 출력", "데이터 시각화"))
             if choose_type == "이미지 출력":
+                text = ''
+                for idx, c in enumerate(colors2):
+                    text += f'<span style="color:{c};background:gray;">{categories[idx]} </span>'
+                
+                st.markdown(f'<p>{text}</p>', unsafe_allow_html=True)
                 page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
             elif choose_type == "데이터 시각화":
                 st.header("annotations 분석")
@@ -202,7 +227,7 @@ def login(password, auth):
         st.write('need password')
 
 if 'login' not in st.session_state or st.session_state['login'] == False:
-    auth = set(['T7137','T7122','T7148','T7134','T7104','T7119'])
+    auth = set(['T7157','T7122','T7148','T7134','T7104','T7119'])
     password = st.sidebar.text_input('password',type='password')
     button = st.sidebar.button('login',on_click=login(password, auth))
 
