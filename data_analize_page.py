@@ -258,18 +258,26 @@ def main():
 
         if st.sidebar.checkbox("HorizontalFlip",value=True): transform_list.append(A.HorizontalFlip(p=1))
         if st.sidebar.checkbox("VerticalFlip"): transform_list.append(A.VerticalFlip(p=1))
-
-        angle = st.sidebar.slider("Choose Rotation Angle", min_value=-180, max_value=180, value=0, step=1)
-        transform_list.append(A.Rotate(limit=(angle, angle), p=1))
-
+    
         shift_x = st.sidebar.slider("Choose Horizontal Shift", min_value=-30, max_value=30, value=0, step=1)
         shift_y = st.sidebar.slider("Choose Vertical Shift", min_value=-30, max_value=30, value=0, step=1)
-        transform_list.append(A.Affine(translate_percent={"x": shift_x/100, "y": shift_y/100}, scale=1, rotate=0, mode=3, p=1.0))
+        s_mode = st.sidebar.radio("Choose shift Mode", options=['0', '1', '2', '3'], horizontal=True)
+        transform_list.append(A.Affine(translate_percent={"x": shift_x/100, "y": shift_y/100}, scale=1, rotate=0, mode=s_mode, p=1.0))
+
+        angle = st.sidebar.slider("Choose Rotation Angle", min_value=-180, max_value=180, value=0, step=1)
+        r_mode = st.sidebar.radio("Choose Rotation Mode", options=['0', '1', '2', '3'], horizontal=True)
+        transform_list.append(A.Rotate(limit=(angle, angle),border_mode=r_mode, p=1))
 
         transform = A.Compose(transform_list, bbox_params=A.BboxParams(format='coco', label_fields=['labels']))
         img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
-        st.image(img, width=550)
-
+        col1, col2 = st.columns((2,1))
+        col1.image(img, width=550)
+        if col2.checkbox("Center crop"):
+            w = col2.slider('W', min_value=100, max_value=img.shape[0], value=500)
+            h = col2.slider('H', min_value=100, max_value=img.shape[1], value=500)
+            transform_list.append(A.CenterCrop(width=w, height=h, p=1))
+            img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
+            col2.image(img)
 def login(password, auth):
     if password in auth:
         st.session_state['login'] = True
