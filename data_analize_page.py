@@ -268,11 +268,12 @@ def main():
             csv = csv_list(dir)
 
             choose_csv = st.sidebar.selectbox("output.csv적용",("안함",)+tuple(csv))
-            annotationdict = pd.DataFrame()
+            annotationdf = pd.DataFrame()
             if choose_csv != "안함":
-                annotationdict = csv_to_dataframe(dir, choose_csv)
+                annotationdf = csv_to_dataframe(dir, choose_csv)
+                testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
 
-            show_dataframe(testd['images'],annotationdict,st,'../dataset/')
+            show_dataframe(testd['images'],annotationdf,st,'../dataset/')
 
     elif option == "원본 데이터":
         choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
