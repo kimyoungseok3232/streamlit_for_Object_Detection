@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import json
@@ -50,11 +51,60 @@ def load_json_data():
 # 데이터 페이지 단위로 데이터프레임 스플릿
 # 입력 - input_df(이미지 데이터), anno_df(박스 그리기 용), rows(한번에 보여줄 데이터 수)
 # 출력 - df(이미지 데이터프레임 리스트), df2(박스 그리기 용 데이터프레임 리스트)
-@st.cache_data(show_spinner=False)
+@st.cache_data()
 def split_frame(input_df, rows):
     df = [input_df.loc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
     return df
 
+@st.cache_data()
+def csv_to_dataframe(dir, csv_file):
+    file_path = os.path.join(dir, csv_file)  # 파일 경로 생성
+    df = pd.read_csv(file_path)  # csv 파일을 DataFrame으로 불러오기
+    df['image_id'] = df['image_id'].str.extract(r"(\d+)").astype(int)
+    annotation = []
+    ann_id = 0
+    
+    # 각 파일의 내용 처리
+    for row in df.itertuples(index=False, name=None):
+        img = row[1]  # image_id
+        pred_str = row[0]  # PredictionString
+
+        # PredictionString이 NaN일 경우 스킵
+        if pd.isna(pred_str):
+            continue
+        
+        pred = list(map(float, pred_str.split()))
+        
+        # 예측값을 6개씩 묶어서 처리
+        for j in range(0, len(pred), 6):
+            if j + 5 >= len(pred):  # 인덱스 범위 체크
+                continue
+            
+            category_id = int(pred[j])
+            confidence = pred[j + 1]
+            bbox = (pred[j + 2], pred[j + 3], pred[j + 4], pred[j + 5])  # (x, y, w, h)
+            area = pred[j + 4] * pred[j + 5]  # 넓이 계산 (w * h)
+
+            # annotation 리스트에 추가
+            annotation.append({
+                "image_id": img,
+                "category_id": category_id,
+                "area": area,
+                "bbox": bbox,
+                "isclowd": 0,
+                "id": ann_id,
+                "confidence": confidence
+            })
+            
+            ann_id += 1
+    
+    anno = pd.DataFrame(annotation)
+    
+    return anno
+
+def csv_list(output_dir):
+    csv_files = [f for f in os.listdir(output_dir) if f.endswith('.csv')]
+    return csv_files
 # 팝업창 띄우기
 @st.dialog("image")
 def show_image(type,path):
@@ -169,20 +219,22 @@ def main():
     if option == "이미지 데이터":
         # 트레인 데이터 출력
         choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
+
         if choose_data == "train":
             st.header("트레인 데이터")
             choose_type = st.sidebar.selectbox("시각화 선택", ("이미지 출력", "데이터 시각화"))
+
             if choose_type == "이미지 출력":
                 text = ''
                 for idx, c in enumerate(colors2):
                     text += f'<span style="color:{c};background:gray;">{categories[idx]} </span>'
-                
                 st.markdown(f'<p>{text}</p>', unsafe_allow_html=True)
-                page = show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
+                show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
+
             elif choose_type == "데이터 시각화":
                 st.header("annotations 분석")
                 st.dataframe(traind['annotations'])
-                
+    
                 st.subheader("이미지당 annotation의 수")
                 d = traind['annotations']['image_id'].value_counts().sort_index()
                 maxd, meand, mediand, stdd = d.max(), d.mean(), d.median(), d.std()
@@ -212,7 +264,16 @@ def main():
 
         elif choose_data == "test":
             st.header("테스트 데이터")
-            page = show_dataframe(testd['images'],testd['annotations'],st,'../dataset/')
+            dir = 'output'
+            csv = csv_list(dir)
+
+            choose_csv = st.sidebar.selectbox("output.csv적용",("안함",)+tuple(csv))
+            annotationdict = pd.DataFrame()
+            if choose_csv != "안함":
+                annotationdict = csv_to_dataframe(dir, choose_csv)
+
+            show_dataframe(testd['images'],annotationdict,st,'../dataset/')
+
     elif option == "원본 데이터":
         choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
 
