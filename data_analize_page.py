@@ -82,7 +82,7 @@ def csv_to_dataframe(dir, csv_file):
             
             category_id = int(pred[j])
             confidence = pred[j + 1]
-            bbox = (pred[j + 2], pred[j + 3], pred[j + 4], pred[j + 5])  # (x, y, w, h)
+            bbox = (pred[j + 2], pred[j + 3], pred[j + 4]-pred[j + 2], pred[j + 5]-pred[j + 3])  # (x, y, w, h)
             area = pred[j + 4] * pred[j + 5]  # 넓이 계산 (w * h)
 
             # annotation 리스트에 추가
