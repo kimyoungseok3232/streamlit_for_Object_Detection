@@ -67,9 +67,6 @@ def show_image(type,path):
 ## img_pathes = train_data['image_id'] or test_data['image_id'] 데이터프레임
 ## anno = train_data[['bbox','category_id']] 데이터프레임
 ## window = 데이터 출력할 창
-def apply_transforms(img, anno, transform):
-
-    return img, anno
 def get_image(image_path, anno, transform):
     img = cv2.imread(image_path)
     tlist = [0 for _ in range(10)]
