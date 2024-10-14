@@ -1,10 +1,12 @@
-import os
-import streamlit as st
-import pandas as pd
 import json
+import os
+
+import albumentations as A
 import cv2
 import numpy as np
-import albumentations as A
+import pandas as pd
+import streamlit as st
+
 st.set_page_config(page_title="데이터 분석 및 개별 이미지 확인용", layout="wide")
 
 global categories, colors1, colors2
@@ -106,9 +108,36 @@ def csv_list(output_dir):
     csv_files = [f for f in os.listdir(output_dir) if f.endswith('.csv')]
     return csv_files
 # 팝업창 띄우기
-@st.dialog("image")
-def show_image(type,path):
-    pass
+
+def check_same_csv(name, csv):
+    i = 1
+    while name in csv:
+        if i == 1:
+            name = name[:-4]+'_'+str(i)+'.csv'
+        else:
+            name = name[:-6]+'_'+str(i)+'.csv'
+        i += 1
+    return name
+
+@st.dialog("csv upload")
+def upload_csv(csv):
+    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+
+    # 파일이 업로드되면 처리
+    if uploaded_file is not None:
+        # Pandas를 사용해 CSV 파일 읽기
+        df = pd.read_csv(uploaded_file)
+        df = df[['PredictionString','image_id']]
+
+        # DataFrame 내용 출력
+        st.write("Data Preview:")
+        st.dataframe(df)
+
+        name = check_same_csv(uploaded_file.name,csv)
+        st.write("saved file name: "+name)
+        df.to_csv('./output/'+name,index=False)
+        if st.button("close"):
+            st.rerun()
 
 # 페이지에 있는 이미지 출력
 # 입력
@@ -274,6 +303,9 @@ def main():
                 testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
 
             show_dataframe(testd['images'],annotationdf,st,'../dataset/')
+
+            if st.sidebar.button("csv파일 업로드"):
+                upload_csv(csv)
 
     elif option == "원본 데이터":
         choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
