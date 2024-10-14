@@ -1,5 +1,6 @@
 test.ipynb
-
+generate_keys.py
+*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
