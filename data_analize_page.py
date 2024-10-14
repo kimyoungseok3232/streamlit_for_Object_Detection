@@ -133,9 +133,11 @@ def upload_csv(csv):
         st.write("Data Preview:")
         st.dataframe(df)
 
-        name = check_same_csv(uploaded_file.name,csv)
-        st.write("saved file name: "+name)
-        df.to_csv('./output/'+name,index=False)
+        input_name = st.text_input("csv 파일 이름 지정", value=uploaded_file.name.replace('.csv', ''))
+        if st.button("upload_csv"):
+            name = check_same_csv(input_name+'.csv',csv)
+            st.write("saved file name: "+name)
+            df.to_csv('./output/'+name,index=False)
         if st.button("close"):
             st.rerun()
 
