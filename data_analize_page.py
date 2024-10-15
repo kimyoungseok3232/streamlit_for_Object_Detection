@@ -377,6 +377,8 @@ def main():
             img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
             col2.image(img)
     elif option == "backup":
+        if not os.path.exists('./backup/'):
+            os.makedirs('./backup/')
         st.header("backup 파일 목록")
         file_list = os.listdir('./backup/')
         for file in file_list:
