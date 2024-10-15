@@ -141,6 +141,10 @@ def upload_csv(csv):
         if st.button("close"):
             st.rerun()
 
+def csv_to_backup(csv):
+    os.rename('./output/'+csv,'./backup/'+csv)
+    st.rerun()
+
 # 페이지에 있는 이미지 출력
 # 입력
 ## type = 이미지 경로 찾을 때 사용(../dataset/train/, ../dataset/test/ 이미지 서로 다른 폴더인 경우 사용 가능),
@@ -242,7 +246,7 @@ def show_dataframe(img,anno,window,type):
 
 def main():
     # 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
-    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터", "트랜스폼 테스트"))
+    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터", "트랜스폼 테스트", "backup"))
 
     # 데이터 로드
     testd, traind, testjson, trainjson = load_json_data()
@@ -303,10 +307,12 @@ def main():
             if choose_csv != "안함":
                 annotationdf = csv_to_dataframe(dir, choose_csv)
                 testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
+                if st.sidebar.button("현재 csv 백업 폴더로 이동"):
+                    csv_to_backup(choose_csv)
 
             show_dataframe(testd['images'],annotationdf,st,'../dataset/')
 
-            if st.sidebar.button("csv파일 업로드"):
+            if st.sidebar.button("새 csv 파일 업로드"):
                 upload_csv(csv)
 
     elif option == "원본 데이터":
@@ -370,6 +376,29 @@ def main():
             transform_list.append(A.CenterCrop(width=w, height=h, p=1))
             img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
             col2.image(img)
+    elif option == "backup":
+        st.header("backup 파일 목록")
+        file_list = os.listdir('./backup/')
+        for file in file_list:
+            file_path = os.path.join('./backup/', file)
+            if os.path.isfile(file_path):
+                file_name, button1, button2 = st.columns([5,1,2])
+                file_name.write(file)
+                if button1.button("삭제", key = f"delete {file}"):
+                    try:
+                        os.remove(file_path)
+                        st.success(f"{file} 파일이 삭제되었습니다.")
+                    except:
+                        st.error("파일 삭제 중 오류가 발생했습니다.")
+                    st.rerun()
+                if button2.button("기존 폴더로 이동", key = f"move {file}"):
+                    try:
+                        os.rename(file_path,'./output/'+file)
+                        st.success(f"{file} 파일이 이동되었습니다.")
+                    except:
+                        st.error("파일 이동 중 오류가 발생했습니다.")
+                    st.rerun()
+
 def login(password, auth):
     if password in auth:
         st.session_state['login'] = True
