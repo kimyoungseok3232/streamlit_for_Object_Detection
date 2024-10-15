@@ -350,29 +350,33 @@ def main():
                       "71 annotation": ['../dataset/train/4197.jpg',4197]}
         choose_data = st.sidebar.selectbox("choose_image",("1 annotation", "big annotation", "8 annotation", "34 annotation", "71 annotation"))
 
-        if st.sidebar.checkbox("HorizontalFlip",value=True): transform_list.append(A.HorizontalFlip(p=1))
-        if st.sidebar.checkbox("VerticalFlip"): transform_list.append(A.VerticalFlip(p=1))
-    
-        shift_x = st.sidebar.slider("Choose Horizontal Shift", min_value=-30, max_value=30, value=0, step=1)
-        shift_y = st.sidebar.slider("Choose Vertical Shift", min_value=-30, max_value=30, value=0, step=1)
-        s_mode = st.sidebar.radio("Choose shift Mode", options=['0', '1', '2', '3'], horizontal=True)
+        with st.sidebar.expander("Flip 적용"):
+            if st.checkbox("HorizontalFlip"): transform_list.append(A.HorizontalFlip(p=1))
+            if st.checkbox("VerticalFlip"): transform_list.append(A.VerticalFlip(p=1))
+        
+        with st.sidebar.expander("Shift 적용"):
+            shift_x = st.slider("Choose Horizontal Shift", min_value=-30, max_value=30, value=0, step=1)
+            shift_y = st.slider("Choose Vertical Shift", min_value=-30, max_value=30, value=0, step=1)
+            s_mode = st.radio("Choose shift Mode", options=['0', '1', '2', '3'], horizontal=True)
         transform_list.append(A.Affine(translate_percent={"x": shift_x/100, "y": shift_y/100}, scale=1, rotate=0, mode=s_mode, p=1.0))
 
-        angle = st.sidebar.slider("Choose Rotation Angle", min_value=-180, max_value=180, value=0, step=1)
-        r_mode = st.sidebar.radio("Choose Rotation Mode", options=['0', '1', '2', '3'], horizontal=True)
+        with st.sidebar.expander("Rotation 적용"):
+            angle = st.slider("Choose Rotation Angle", min_value=-180, max_value=180, value=0, step=1)
+            r_mode = st.radio("Choose Rotation Mode", options=['0', '1', '2', '3'], horizontal=True)
         transform_list.append(A.Rotate(limit=(angle, angle),border_mode=r_mode, p=1))
 
-        color = st.sidebar.radio("Choose RandomBrightnessContrast or ColorJitter", options=['RBC','CJ'], horizontal=True)
-        if color == 'RBC':
-            contrast_value = st.sidebar.slider("Contrast value", min_value=-1.0, max_value=3.0, value=0.0, step=0.1)
-            brightness_value = st.sidebar.slider("Brightness value", min_value=-1.0, max_value=1.0, value=0.0, step=0.1)
-            transform_list.append(A.RandomBrightnessContrast(brightness_limit=(brightness_value,brightness_value), contrast_limit=(contrast_value,contrast_value), p=1))
-        elif color == 'CJ':
-            contrast_value = st.sidebar.slider("Contrast value", min_value=0.0, max_value=3.0, value=1.0, step=0.1)
-            brightness_value = st.sidebar.slider("Brightness value", min_value=0.0, max_value=3.0, value=1.0, step=0.1)
-            saturation_value = st.sidebar.slider("Saturation value", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
-            hue_value = st.sidebar.slider("Hue value", min_value=-0.5, max_value=0.5, value=0.0, step=0.01)
-            transform_list.append(A.ColorJitter(brightness=(brightness_value,brightness_value),contrast=(contrast_value,contrast_value),saturation=(saturation_value,saturation_value),hue=[hue_value,hue_value],p=1))
+        with st.sidebar.expander("Color 적용"):
+            color = st.radio("RandomBrightnessContrast or ColorJitter", options=['RBC','CJ'], horizontal=True)
+            if color == 'RBC':
+                contrast_value = st.slider("Contrast value", min_value=-1.0, max_value=3.0, value=0.0, step=0.1)
+                brightness_value = st.slider("Brightness value", min_value=-1.0, max_value=1.0, value=0.0, step=0.1)
+                transform_list.append(A.RandomBrightnessContrast(brightness_limit=(brightness_value,brightness_value), contrast_limit=(contrast_value,contrast_value), p=1))
+            elif color == 'CJ':
+                contrast_value = st.slider("Contrast value", min_value=0.0, max_value=3.0, value=1.0, step=0.1)
+                brightness_value = st.slider("Brightness value", min_value=0.0, max_value=3.0, value=1.0, step=0.1)
+                saturation_value = st.slider("Saturation value", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+                hue_value = st.slider("Hue value", min_value=-0.5, max_value=0.5, value=0.0, step=0.01)
+                transform_list.append(A.ColorJitter(brightness=(brightness_value,brightness_value),contrast=(contrast_value,contrast_value),saturation=(saturation_value,saturation_value),hue=[hue_value,hue_value],p=1))
 
         transform = A.Compose(transform_list, bbox_params=A.BboxParams(format='coco', label_fields=['labels']))
         img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
