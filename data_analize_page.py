@@ -339,11 +339,7 @@ def main():
                 elif isinstance(data[key], list) and data[key]:
                     window[idx].write(key+" : list of dict")
                     window[idx].write(pd.DataFrame(data[key][0].keys(), columns=[key]))
-        # st.write(pd.DataFrame(traind.keys(),columns=[choose_data]))
-        # keylen = len(traind.keys())
-        # window = st.columns(keylen)
-        # for idx,key in enumerate(traind):
-        #     window[idx].write(traind[key].columns.rename(key))
+
     elif option == "트랜스폼 테스트":
         st.header("트랜스폼 테스트")
         transform_list = []
@@ -366,6 +362,10 @@ def main():
         r_mode = st.sidebar.radio("Choose Rotation Mode", options=['0', '1', '2', '3'], horizontal=True)
         transform_list.append(A.Rotate(limit=(angle, angle),border_mode=r_mode, p=1))
 
+        contrast_value = st.sidebar.slider("Contrast value", min_value=-1.0, max_value=3.0, value=0.0, step=0.1)
+        brightness_value = st.sidebar.slider("Brightness value", min_value=-1.0, max_value=1.0, value=0.0, step=0.1)
+        transform_list.append(A.RandomBrightnessContrast(brightness_limit=(brightness_value,brightness_value), contrast_limit=(contrast_value,contrast_value), p=1))
+
         transform = A.Compose(transform_list, bbox_params=A.BboxParams(format='coco', label_fields=['labels']))
         img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
         col1, col2 = st.columns((2,1))
@@ -376,6 +376,7 @@ def main():
             transform_list.append(A.CenterCrop(width=w, height=h, p=1))
             img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
             col2.image(img)
+
     elif option == "backup":
         if not os.path.exists('./backup/'):
             os.makedirs('./backup/')
