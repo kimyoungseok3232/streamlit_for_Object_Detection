@@ -252,6 +252,11 @@ def main():
     testd, traind, testjson, trainjson = load_json_data()
 
     if option == "이미지 데이터":
+        with st.sidebar.expander("Annotation 선택"):
+            st.session_state['Choosed_annotation'] = []
+            for category in range(len(categories)):
+                if st.checkbox(categories[category],value=True):
+                    st.session_state['Choosed_annotation'].append(category)
         # 트레인 데이터 출력
         choose_data = st.sidebar.selectbox("트레인/테스트", ("train", "test"))
 
@@ -264,6 +269,7 @@ def main():
                 for idx, c in enumerate(colors2):
                     text += f'<span style="color:{c};background:gray;">{categories[idx]} </span>'
                 st.markdown(f'<p>{text}</p>', unsafe_allow_html=True)
+                traind['annotations'] = traind['annotations'][traind['annotations']['category_id'].isin(st.session_state['Choosed_annotation'])]
                 show_dataframe(traind['images'],traind['annotations'],st,'../dataset/')
 
             elif choose_type == "데이터 시각화":
@@ -309,7 +315,8 @@ def main():
                 testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
                 if st.sidebar.button("현재 csv 백업 폴더로 이동"):
                     csv_to_backup(choose_csv)
-
+                annotationdf = annotationdf[annotationdf['category_id'].isin(st.session_state['Choosed_annotation'])]
+            
             show_dataframe(testd['images'],annotationdf,st,'../dataset/')
 
             if st.sidebar.button("새 csv 파일 업로드"):
