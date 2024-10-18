@@ -311,10 +311,10 @@ def main():
             choose_csv = st.sidebar.selectbox("output.csv적용",("안함",)+tuple(csv))
             annotationdf = pd.DataFrame()
             if choose_csv != "안함":
-                annotationdf = csv_to_dataframe(dir, choose_csv)
-                testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
                 if st.sidebar.button("현재 csv 백업 폴더로 이동"):
                     csv_to_backup(choose_csv)
+                annotationdf = csv_to_dataframe(dir, choose_csv)
+                testd['images']['annotation_num'] = annotationdf['image_id'].value_counts()
                 annotationdf = annotationdf[annotationdf['category_id'].isin(st.session_state['Choosed_annotation'])]
             
             show_dataframe(testd['images'],annotationdf,st,'../dataset/')
