@@ -378,6 +378,10 @@ def main():
                 hue_value = st.slider("Hue value", min_value=-0.5, max_value=0.5, value=0.0, step=0.01)
                 transform_list.append(A.ColorJitter(brightness=(brightness_value,brightness_value),contrast=(contrast_value,contrast_value),saturation=(saturation_value,saturation_value),hue=[hue_value,hue_value],p=1))
 
+        with st.sidebar.expander("CLAHE 적용"):
+            clip_limit = st.slider("Clip limit", min_value=1.0, max_value=10.0, value=1.0, step=0.1)
+            transform_list.append(A.CLAHE(clip_limit=[clip_limit,clip_limit], tile_grid_size=(8, 8), p=1))
+
         transform = A.Compose(transform_list, bbox_params=A.BboxParams(format='coco', label_fields=['labels']))
         img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
         col1, col2 = st.columns((2,1))
