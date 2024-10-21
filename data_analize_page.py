@@ -159,23 +159,42 @@ def get_image(image_path, anno, transform):
     if transform:
         transformed = transform(image=img, bboxes=anno['bbox'].tolist(), labels=anno['category_id'].tolist())
         img = transformed['image']
-        anno = pd.DataFrame({'bbox': transformed['bboxes'], 'category_id': transformed['labels']})
+        anno = pd.DataFrame({'bbox': transformed['bboxes'], 'category_id': transformed['labels'], 'confidence': anno['confidence']})
 
     if not anno.empty:
-        for annotation,trash in anno[['bbox','category_id']].values:
-            cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 3)
-            ((text_width, text_height), _) = cv2.getTextSize(categories[trash], cv2.FONT_HERSHEY_SIMPLEX, 1, 10)
-            cv2.rectangle(img, (int(annotation[0]), int(annotation[1]) - int(1.3 * text_height)), (int(annotation[0] + text_width), int(annotation[1])), colors1[trash], -1)
-            cv2.putText(
-                img,
-                text=categories[trash],
-                org=(int(annotation[0]), int(annotation[1]) - int(0.3 * text_height)),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=1, 
-                color=(0,0,0), 
-                lineType=cv2.LINE_AA,
-            )
-            tlist[trash] += 1
+        if 'confidence' in anno:
+            iters = anno[['bbox','category_id','confidence']].values
+            for annotation,trash,score in iters:
+                if score<st.session_state['confidence']: continue
+                cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 3)
+                ((text_width, text_height), _) = cv2.getTextSize(categories[trash], cv2.FONT_HERSHEY_SIMPLEX, 1, 10)
+                cv2.rectangle(img, (int(annotation[0]), int(annotation[1]) - int(1.3 * text_height)), (int(annotation[0] + text_width), int(annotation[1])), colors1[trash], -1)
+                cv2.putText(
+                    img,
+                    text=categories[trash],
+                    org=(int(annotation[0]), int(annotation[1]) - int(0.3 * text_height)),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1, 
+                    color=(0,0,0), 
+                    lineType=cv2.LINE_AA,
+                )
+                tlist[trash] += 1
+        else:
+            iters = anno[['bbox','category_id']].values
+            for annotation,trash in iters:
+                cv2.rectangle(img, np.rint(annotation).astype(np.int32), colors1[trash], 3)
+                ((text_width, text_height), _) = cv2.getTextSize(categories[trash], cv2.FONT_HERSHEY_SIMPLEX, 1, 10)
+                cv2.rectangle(img, (int(annotation[0]), int(annotation[1]) - int(1.3 * text_height)), (int(annotation[0] + text_width), int(annotation[1])), colors1[trash], -1)
+                cv2.putText(
+                    img,
+                    text=categories[trash],
+                    org=(int(annotation[0]), int(annotation[1]) - int(0.3 * text_height)),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1, 
+                    color=(0,0,0), 
+                    lineType=cv2.LINE_AA,
+                )
+                tlist[trash] += 1
     for id, t in enumerate(tlist):
         if t:
             tset.add((categories[id],t))
@@ -240,7 +259,7 @@ def show_dataframe(img,anno,window,type):
     else:
         con1.dataframe(data=pages[current_page - 1]['file_name'], use_container_width=True)
     if not anno.empty:
-        show_images(type, pages[current_page - 1][['file_name','id']], anno[['image_id','bbox','category_id']], con2)
+        show_images(type, pages[current_page - 1][['file_name','id']], anno, con2)
     else:
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
 
@@ -311,6 +330,7 @@ def main():
             choose_csv = st.sidebar.selectbox("output.csv적용",("안함",)+tuple(csv))
             annotationdf = pd.DataFrame()
             if choose_csv != "안함":
+                st.session_state['confidence'] = st.sidebar.slider("Confidence 값 설정", min_value=0.0, max_value=1.0, value=0.0, step=0.01)
                 if st.sidebar.button("현재 csv 백업 폴더로 이동"):
                     csv_to_backup(choose_csv)
                 annotationdf = csv_to_dataframe(dir, choose_csv)
