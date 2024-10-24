@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import streamlit as st
+from ensenble import ensenble
 
 st.set_page_config(page_title="데이터 분석 및 개별 이미지 확인용", layout="wide")
 
@@ -141,6 +142,61 @@ def upload_csv(csv):
         if st.button("close"):
             st.rerun()
 
+@st.dialog("csv upload")
+def upload_ansenble(csv):
+    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+
+    # 파일이 업로드되면 처리
+    if uploaded_file is not None:
+        # Pandas를 사용해 CSV 파일 읽기
+        df = pd.read_csv(uploaded_file)
+        df = df[['PredictionString','image_id']]
+
+        # DataFrame 내용 출력
+        st.write("Data Preview:")
+        st.dataframe(df)
+
+        input_name = st.text_input("csv 파일 이름 지정", value=uploaded_file.name.replace('.csv', ''))
+        model_name = st.text_input("사용된 모델 명", value=('faster r-cnn...'))
+        addition = st.text_input("추가 설명", value=('k-fold 적용...'))
+        LB_score = st.number_input("리더보드 점수", min_value=0.0000, max_value=1.0000, value=0.0000, step=0.0001, format="%0.4f")
+        if st.button("upload_csv"):
+            cat = pd.read_csv('ansenble/catalog.csv')
+            if 'input_name' in csv:
+                st.error("동일한 이름의 파일이 존재합니다.")
+            else:
+                cat.loc[len(cat)] = [input_name+'.csv', model_name, addition, LB_score]
+                cat.to_csv('ansenble/catalog.csv', index=False)
+                name = check_same_csv(input_name+'.csv',csv)
+                st.write("saved file name: "+name)
+                df.to_csv('./ansenble/'+name,index=False)
+        if st.button("close"):
+            st.rerun()
+
+@st.dialog("csv 정보 변경")
+def change_data(catalog, idx, type):
+    if type == 0:
+        name, model, add, LB = catalog.iloc[idx].values
+
+        input_name = st.text_input("csv 파일 이름 지정", value=name.replace('.csv', ''))
+        model_name = st.text_input("사용된 모델 명", value=model)
+        addition = st.text_input("추가 설명", value=add)
+        LB_score = st.number_input("리더보드 점수", min_value=0.0000, max_value=1.0000, value=LB, step=0.0001, format="%0.4f")
+
+        if st.button("변경", key = "변경1"):
+            catalog.iloc[idx] = [input_name+'.csv', model_name, addition, LB_score]
+            catalog.to_csv('ansenble/catalog.csv', index=False)
+            st.rerun()
+    elif type == 1:
+        catalog.drop(idx, inplace=True)
+        catalog.to_csv('ansenble/catalog.csv', index=False)
+        st.rerun()
+
+@st.cache_data()
+def do_ansanble(csv_list, type, iou_thr, thresh):
+    df_list = [pd.read_csv(f'ansenble/{name}') for name in csv_list]
+    return ensenble(df_list, type=type, iou_thr=iou_thr, thresh=thresh)
+    
 def csv_to_backup(csv):
     os.rename('./output/'+csv,'./backup/'+csv)
     st.rerun()
@@ -159,7 +215,7 @@ def get_image(image_path, anno, transform):
     if transform:
         transformed = transform(image=img, bboxes=anno['bbox'].tolist(), labels=anno['category_id'].tolist())
         img = transformed['image']
-        anno = pd.DataFrame({'bbox': transformed['bboxes'], 'category_id': transformed['labels'], 'confidence': anno['confidence']})
+        anno = pd.DataFrame({'bbox': transformed['bboxes'], 'category_id': transformed['labels']})
 
     if not anno.empty:
         if 'confidence' in anno:
@@ -264,9 +320,11 @@ def show_dataframe(img,anno,window,type):
         show_images(type, pages[current_page - 1][['file_name','id']], pd.DataFrame(), con2)
 
 def main():
+    if st.sidebar.button("새로고침"):
+        st.rerun()
     # 원본데이터 확인 가능 아웃풋도 확인하도록 할 수 있을 듯?
-    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터", "트랜스폼 테스트", "backup"))
-
+    option = st.sidebar.selectbox("데이터 선택",("이미지 데이터", "원본 데이터", "트랜스폼 테스트", "앙상블", "backup"))
+    
     # 데이터 로드
     testd, traind, testjson, trainjson = load_json_data()
 
@@ -419,6 +477,40 @@ def main():
             transform_list.append(A.CenterCrop(width=w, height=h, p=1))
             img, tlist, tset = get_image(image_data[choose_data][0],traind['annotations'][traind['annotations']['image_id']==image_data[choose_data][1]][['image_id','bbox','category_id']],transform)
             col2.image(img)
+    elif option == "앙상블":
+        st.write("앙상블")
+        if not os.path.exists('./ansenble/'):
+            os.makedirs('./ansenble/')
+            # csv_name,model,addition,LB-score
+            pd.DataFrame(columns=['csv_name', 'model', 'addition', 'LB-score']).to_csv('./ansenble/catalog.csv',index=False)
+        catalog = pd.read_csv('./ansenble/catalog.csv')
+        csv = csv_list('ansenble')
+        catalog = catalog[catalog['csv_name'].isin(csv)].sort_values(by=['LB-score','csv_name'], ascending=False).reset_index(drop=True)
+        catalog.to_csv('ansenble/catalog.csv', index=False)
+        ch = st.dataframe(catalog, on_select="rerun", selection_mode="multi-row", width=1000)
+        st.header("선택된 csv 목록")
+        ch_catalog = catalog.loc[ch['selection']['rows']]
+        st.dataframe(ch_catalog, width=1000)
+        if st.sidebar.button("파일 업로드"):
+            upload_ansenble(csv)
+
+        iou_thr = st.slider("IoU threshold", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
+        keep_threshold = st.slider("threshold for boxes to keep (Soft-NMS, Weighted Box Fusion)", min_value=0.001, max_value=0.05, value=0.001, step=0.001, format="%.3f")
+        type_n = st.radio("앙상블 종류", options=["NMS", "Soft-NMS", "Weighted Box Fusion"], horizontal=1, index=0, key="앙상블")
+        type = {"NMS":0,"Soft-NMS":1,"Weighted Box Fusion":2}[type_n]
+        if st.button("선택된 csv 파일로 앙상블"):
+            if ch['selection']['rows']:
+                st.session_state['ensenbledf'] = do_ansanble(ch_catalog['csv_name'].values, type, iou_thr=iou_thr, thresh=keep_threshold)
+            else:
+                st.error("최소 하나의 파일을 선택해야 합니다.")
+        if 'ensenbledf' in st.session_state:
+            st.dataframe(st.session_state['ensenbledf'],hide_index=True)
+            add_name = st.text_input("앙상블 결과 파일 추가 파일명 ex) ensenble_NMS_~~~.csv",value="")
+            defalut_name = 'ensenble_'+type_n+'_'+add_name
+            if st.button("test csv 폴더로 이동"):
+                name = check_same_csv(defalut_name+'.csv',csv_list('output'))
+                st.session_state['ensenbledf'].to_csv('output/'+name, index=False)
+                st.success("저장 완료")
 
     elif option == "backup":
         if not os.path.exists('./backup/'):
